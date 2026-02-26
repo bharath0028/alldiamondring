@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Scene } from "./components/3d/Scene";
 import { ConfiguratorUI } from "./components/ConfiguratorUI";
 import { SkinToneSelector } from "./components/SkinToneSelector";
+import { DiamondSpecs } from "./components/Configurator/DiamondSpecs";
 import { MetalType, GemType, SkinTone, RingModelType } from "./types/index";
 import { DiamondShape } from "./constants/optionConfig";
 
@@ -35,6 +36,7 @@ const App: React.FC = () => {
         />
       </div>
 
+      <DiamondSpecs isConfiguratorOpen={isDrawerOpen} />
       {/* Customize buttons placed outside the drawer so they don't block scene interaction */}
       {!isDrawerOpen && (
           <> 

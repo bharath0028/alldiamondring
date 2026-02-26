@@ -1,13 +1,8 @@
 import React, { useMemo, useEffect, useRef } from "react";
 import * as THREE from "three";
 import { useGLTF } from "@react-three/drei";
-import { useRingConfig } from "../../hooks/useRingConfig";
 import { useDiamondEnvMap } from "../../hooks/useDiamondEnvMap";
-import { useRingAnimation } from "../../hooks/useRingAnimation";
-import { getHeadUrl, isDiamondName } from "../../utils/helpers";
-import { applyOpacityToObject } from "../../utils/materials";
-import { METAL_COLORS } from "../../types";
-import { DiamondMesh } from "../ring/DiamondMesh";
+import { METAL_COLORS, GEM_CONFIG } from "../../types";
 
 interface RingModelProps {
   metal: string;
@@ -28,210 +23,160 @@ export const RingModel: React.FC<RingModelProps> = ({
   renderMode = "performance",
   onModelReady,
 }) => {
-  const { ringConfig, diamondEXR } = useRingConfig(ringModel);
-  const diamondEnvMap = useDiamondEnvMap(diamondEXR);
   const hasNotifiedRef = useRef(false);
   const groupRef = useRef<THREE.Group>(null);
 
-  const baseRingUrl = ringConfig?.baseRing || "/assets/models/ring/ring.glb";
-  const hasHeads = ringConfig?.heads && Object.keys(ringConfig.heads).length > 0;
-  const headUrl = hasHeads ? getHeadUrl(ringConfig, diamondShape) : "/assets/models/ring/heads/round.glb";
+  // Load environment map for diamond reflections
+  const diamondEXR = "/assets/diamond/gem.exr";
+  const diamondEnvMap = useDiamondEnvMap(diamondEXR);
 
-  const { scene: baseScene } = useGLTF(baseRingUrl);
-  // Load head scene (use fallback URL if no heads, but won't be rendered)
-  const { scene: headScene } = useGLTF(headUrl);
+  // Load the single ring.glb file that contains both diamond and ring body
+  const ringUrl = "/assets/models/ring.glb";
+  const { scene } = useGLTF(ringUrl);
 
-  // Clone scenes and apply materials
-  const disposeObject = (obj: THREE.Object3D) => {
-    obj.traverse((child) => {
-      if (child instanceof THREE.Mesh) {
-        if (child.geometry) {
-          child.geometry.dispose();
-        }
-        const material = child.material;
-        if (Array.isArray(material)) {
-          material.forEach((mat) => {
-            if ((mat as any).map) {
-              ((mat as any).map as THREE.Texture).dispose?.();
-            }
-            mat.dispose?.();
-          });
-        } else if (material) {
-          if ((material as any).map) {
-            ((material as any).map as THREE.Texture).dispose?.();
-          }
-          (material as any).dispose?.();
-        }
-      }
-    });
+  // Helper to detect diamond meshes by name or material properties
+  const isDiamondMesh = (child: THREE.Mesh): boolean => {
+    const name = child.name;
+    const nameLower = name.toLowerCase();
+
+    // Match by common diamond/gem naming
+    if (
+      nameLower.includes("diamond") ||
+      nameLower.includes("gem") ||
+      nameLower.includes("stone") ||
+      nameLower.includes("crystal") ||
+      nameLower.includes("glass") ||
+      nameLower.includes("dia") ||
+      nameLower.includes("cs_") ||
+      nameLower.includes("mesh0")
+    )
+      return true;
+
+    // Match numeric-named objects (e.g., "0.80", "0.80_1", "1.10_5") - carat sizes from Blender
+    if (/^\d+[\._]\d+/.test(name)) return true;
+
+    // Check material name
+    const mat = Array.isArray(child.material)
+      ? child.material[0]
+      : child.material;
+    if (mat) {
+      const matName = (mat.name || "").toLowerCase();
+      if (
+        matName.includes("diamond") ||
+        matName.includes("gem") ||
+        matName.includes("glass") ||
+        matName.includes("crystal") ||
+        matName.includes("stone")
+      )
+        return true;
+
+      // Check material properties: transmission > 0, or very low metalness + roughness
+      if ((mat as any).transmission > 0) return true;
+    }
+
+    return false;
   };
 
-  const baseClone = useMemo(() => {
-    if (!baseScene) return null;
-    const clone = baseScene.clone(true);
+  // Clone scene and apply materials directly
+  const ringClone = useMemo(() => {
+    if (!scene || !diamondEnvMap) return null;
+    const clone = scene.clone(true);
     const metalColor = new THREE.Color(METAL_COLORS[metal] || "#D9D9D9");
+    const gemColor = new THREE.Color(GEM_CONFIG[gem]?.color || "#ffffff");
+
+    // DEBUG: Log all mesh names so you can see what's in the GLB
+    console.group("🔍 GLB Mesh Names (ring.glb)");
     clone.traverse((child) => {
       if (child instanceof THREE.Mesh) {
-        child.material = Array.isArray(child.material)
-          ? child.material.map((m) => m.clone())
-          : child.material?.clone();
-        if (!isDiamondName(child.name)) {
+        const mat = Array.isArray(child.material)
+          ? child.material[0]
+          : child.material;
+        const detected = isDiamondMesh(child);
+        console.log(
+          `${detected ? "💎" : "🔩"} "${child.name}" | Material: "${mat?.name}" | Type: ${mat?.type} | Detected as: ${detected ? "DIAMOND" : "METAL"}`
+        );
+      }
+    });
+    console.groupEnd();
+
+    clone.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        if (isDiamondMesh(child)) {
+          // Apply diamond material with transmission directly on the mesh
+          child.material = new THREE.MeshPhysicalMaterial({
+            color: gemColor,
+            metalness: 0,
+            roughness: 0,
+            transmission: 1,
+            thickness: 1.5,
+            ior: 2.42,
+            envMap: diamondEnvMap,
+            envMapIntensity: 3,
+            clearcoat: 1,
+            clearcoatRoughness: 0,
+            transparent: true,
+            opacity: 1,
+            specularIntensity: 1,
+            specularColor: new THREE.Color("#ffffff"),
+            attenuationDistance: 0.5,
+            attenuationColor: gemColor,
+          });
+        } else {
+          // Apply metal material to ring body
           child.material = new THREE.MeshStandardMaterial({
             color: metalColor,
             metalness: 1,
             roughness: 0.05,
-            envMapIntensity: 2.5,
+            envMapIntensity: envMapIntensity * 1.5,
           });
         }
       }
     });
     return clone;
-  }, [baseScene, metal]);
+  }, [scene, metal, gem, envMapIntensity, diamondEnvMap]);
 
-  const headClone = useMemo(() => {
-    // Only create head clone if ring has heads
-    if (!headScene || !hasHeads) return null;
-    const clone = headScene.clone(true);
+  // Update materials when metal or gem changes
+  useEffect(() => {
+    if (!ringClone || !diamondEnvMap) return;
     const metalColor = new THREE.Color(METAL_COLORS[metal] || "#D9D9D9");
-    clone.traverse((child) => {
+    const gemColor = new THREE.Color(GEM_CONFIG[gem]?.color || "#ffffff");
+
+    ringClone.traverse((child) => {
       if (child instanceof THREE.Mesh) {
-        child.material = Array.isArray(child.material)
-          ? child.material.map((m) => m.clone())
-          : child.material?.clone();
-        if (!isDiamondName(child.name)) {
+        if (isDiamondMesh(child)) {
+          child.material = new THREE.MeshPhysicalMaterial({
+            color: gemColor,
+            metalness: 0,
+            roughness: 0,
+            transmission: 1,
+            thickness: 1.5,
+            ior: 2.42,
+            envMap: diamondEnvMap,
+            envMapIntensity: 3,
+            clearcoat: 1,
+            clearcoatRoughness: 0,
+            transparent: true,
+            opacity: 1,
+            specularIntensity: 1,
+            specularColor: new THREE.Color("#ffffff"),
+            attenuationDistance: 0.5,
+            attenuationColor: gemColor,
+          });
+        } else {
           child.material = new THREE.MeshStandardMaterial({
             color: metalColor,
             metalness: 1,
             roughness: 0.05,
-            envMapIntensity: 2.5,
+            envMapIntensity: envMapIntensity * 1.5,
           });
         }
       }
     });
-    return clone;
-  }, [headScene, metal, hasHeads]);
-
-  // Animation hook
-  const { animProgress, ringTransitionProgress, ringScale, ringRotation } =
-    useRingAnimation({
-      ringModel,
-      diamondShape,
-      baseClone,
-      headClone,
-    });
-
-  // Collect diamond meshes
-  const baseDiamondWorld = useMemo(() => {
-    if (!baseClone) return [];
-    const list: Array<{
-      pos: THREE.Vector3;
-      quat: THREE.Quaternion;
-      scale: THREE.Vector3;
-      geo: THREE.BufferGeometry;
-      minY: number;
-      height: number;
-    }> = [];
-
-    baseClone.traverse((c) => {
-      if (c instanceof THREE.Mesh && isDiamondName(c.name)) {
-        c.visible = false;
-        const pos = new THREE.Vector3();
-        const quat = new THREE.Quaternion();
-        c.getWorldPosition(pos);
-        c.getWorldQuaternion(quat);
-
-        const bbox = new THREE.Box3().setFromObject(c);
-        list.push({
-          pos,
-          quat,
-          scale: c.scale.clone(),
-          geo: c.geometry,
-          minY: bbox.min.y,
-          height: bbox.max.y - bbox.min.y,
-        });
-      }
-    });
-    return list;
-  }, [baseClone]);
-
-  const headDiamondWorld = useMemo(() => {
-    if (!headClone) return [];
-    const list: Array<{
-      pos: THREE.Vector3;
-      quat: THREE.Quaternion;
-      scale: THREE.Vector3;
-      geo: THREE.BufferGeometry;
-      minY: number;
-      height: number;
-    }> = [];
-
-    headClone.traverse((c) => {
-      if (c instanceof THREE.Mesh && isDiamondName(c.name)) {
-        c.visible = false;
-        const pos = new THREE.Vector3();
-        const quat = new THREE.Quaternion();
-        c.getWorldPosition(pos);
-        c.getWorldQuaternion(quat);
-
-        const bbox = new THREE.Box3().setFromObject(c);
-        list.push({
-          pos,
-          quat,
-          scale: c.scale.clone(),
-          geo: c.geometry,
-          minY: bbox.min.y,
-          height: bbox.max.y - bbox.min.y,
-        });
-      }
-    });
-    return list;
-  }, [headClone]);
-
-  // Update materials when metal changes
-  useEffect(() => {
-    if (!baseClone) return;
-    const metalColor = new THREE.Color(METAL_COLORS[metal] || "#D9D9D9");
-    const applyMetal = (obj: THREE.Object3D) => {
-      obj.traverse((child) => {
-        if (child instanceof THREE.Mesh && !isDiamondName(child.name)) {
-          child.material = new THREE.MeshStandardMaterial({
-            color: metalColor,
-            metalness: 1,
-            roughness: 0.05,
-            envMapIntensity: 2.5,
-          });
-        }
-      });
-    };
-    applyMetal(baseClone);
-    if (headClone) {
-      applyMetal(headClone);
-    }
-  }, [baseClone, headClone, metal]);
-
-  // Update group transform and opacity
-  useEffect(() => {
-    if (groupRef.current) {
-      groupRef.current.scale.setScalar(ringScale);
-      groupRef.current.rotation.y = ringRotation;
-    }
-
-    if (baseClone) {
-      applyOpacityToObject(baseClone, ringTransitionProgress);
-    }
-    if (headClone) {
-      applyOpacityToObject(headClone, ringTransitionProgress);
-    }
-  }, [ringScale, ringRotation, ringTransitionProgress, baseClone, headClone]);
+  }, [ringClone, metal, gem, envMapIntensity, diamondEnvMap]);
 
   // Notify when loaded
   useEffect(() => {
-    // For rings without heads, only need baseClone. For rings with heads, need both.
-    const isReady = hasHeads
-      ? (diamondEnvMap && baseClone && headClone)
-      : baseClone;
-
-    if (isReady && !hasNotifiedRef.current) {
+    if (ringClone && !hasNotifiedRef.current) {
       const timer = setTimeout(() => {
         if (onModelReady) {
           onModelReady();
@@ -240,76 +185,38 @@ export const RingModel: React.FC<RingModelProps> = ({
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [diamondEnvMap, baseClone, headClone, onModelReady, hasHeads]);
+  }, [ringClone, onModelReady]);
 
   // Reset notification on shape change
   useEffect(() => {
     hasNotifiedRef.current = false;
   }, [diamondShape]);
 
-  // Cleanup cloned scenes and clear loader cache to avoid GPU leaks on repeated mounts
+  // Cleanup
   useEffect(() => {
     return () => {
-      if (baseClone) {
-        disposeObject(baseClone);
+      if (ringClone) {
+        ringClone.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            child.geometry?.dispose();
+            const material = child.material;
+            if (Array.isArray(material)) {
+              material.forEach((mat) => mat.dispose?.());
+            } else if (material) {
+              (material as any).dispose?.();
+            }
+          }
+        });
       }
-      if (headClone) {
-        disposeObject(headClone);
-      }
-      if (baseRingUrl) {
-        useGLTF.clear(baseRingUrl);
-      }
-      if (headUrl && hasHeads) {
-        useGLTF.clear(headUrl);
-      }
+      useGLTF.clear(ringUrl);
     };
-  }, [baseClone, headClone, baseRingUrl, headUrl]);
+  }, [ringClone]);
 
-  if (!baseClone) return null;
+  if (!ringClone) return null;
 
   return (
-    <group ref={groupRef}>
-      <primitive object={baseClone} visible={ringTransitionProgress > 0} />
-      {headClone && (
-        <primitive object={headClone} visible={ringTransitionProgress > 0} />
-      )}
-
-      {diamondEnvMap && (
-        <>
-          {/* Base ring diamonds */}
-          {baseDiamondWorld.map((d, i) => (
-            <DiamondMesh
-              key={`base-${ringModel}-${i}-${renderMode}`}
-              geometry={d.geo}
-              position={d.pos}
-              quaternion={d.quat}
-              scale={d.scale}
-              gem={gem}
-              envMap={diamondEnvMap}
-              opacity={ringTransitionProgress}
-              renderMode={renderMode}
-            />
-          ))}
-
-          {/* Head diamonds */}
-          {headDiamondWorld.map((d, i) => (
-            <DiamondMesh
-              key={`head-${diamondShape}-${i}-${renderMode}`}
-              geometry={d.geo}
-              position={d.pos}
-              quaternion={d.quat}
-              scale={d.scale}
-              gem={gem}
-              envMap={diamondEnvMap}
-              opacity={ringTransitionProgress * Math.min(animProgress * 2, 1)}
-              minY={d.minY}
-              height={d.height}
-              animProgress={animProgress}
-              renderMode={renderMode}
-            />
-          ))}
-        </>
-      )}
+    <group ref={groupRef} scale={0.5}>
+      <primitive object={ringClone} />
     </group>
   );
 };
