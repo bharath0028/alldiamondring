@@ -1,0 +1,43 @@
+{
+    "rings": {
+        "ring": {
+            "name": "Classic Ring",
+            "baseRing": "/assets/models/ring/ring.glb",
+            "heads": {
+                "round": "/assets/models/ring/heads/round.glb",
+                "radiant": "/assets/models/ring/heads/radiant.glb",
+                "princess": "/assets/models/ring/heads/princess.glb",
+                "pear": "/assets/models/ring/heads/pear.glb",
+                "marquise": "/assets/models/ring/heads/marquise.glb",
+                "emerald": "/assets/models/ring/heads/emerald.glb",
+                "heart": "/assets/models/ring/heads/heart.glb",
+                "baguette": "/assets/models/ring/heads/baguette.glb",
+                "cushion": "/assets/models/ring/heads/cushion.glb",
+                "halfmoon": "/assets/models/ring/heads/halfmoon.glb",
+                "hexagon": "/assets/models/ring/heads/hexagon.glb",
+                "kite": "/assets/models/ring/heads/kite.glb",
+                "octagon": "/assets/models/ring/heads/octagon.glb",
+                "oval": "/assets/models/ring/heads/oval.glb",
+                "taper": "/assets/models/ring/heads/taper.glb",
+                "trillion": "/assets/models/ring/heads/trillion.glb"
+            }
+        },
+        "ring-02": {
+            "name": "Modern Ring",
+            "baseRing": "/assets/models/ring-02/ring.glb",
+            "heads": {
+                "round": "/assets/models/ring-02/heads/round.glb",
+                "princess": "/assets/models/ring-02/heads/princess.glb",
+                "pear": "/assets/models/ring-02/heads/pear.glb",
+                "emerald": "/assets/models/ring-02/heads/emerald.glb",
+                "heart": "/assets/models/ring-02/heads/heart.glb"
+            }
+        },
+        "ring-03": {
+            "visible": false,
+            "name": "Vintage Ring",
+            "baseRing": "/assets/models/ring-03/ring.glb"
+        }
+    },
+    "diamondEXR": "/assets/diamond/gem.exr"
+}

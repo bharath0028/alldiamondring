@@ -1,0 +1,5 @@
+{
+  "name": "3D Configurator",
+  "description": "A high-fidelity real-time 3D diamond ring configurator allowing users to customize metal types and gem varieties with realistic physics-based rendering.",
+  "requestFramePermissions": []
+}
