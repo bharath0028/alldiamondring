@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Scene } from "./components/3d/Scene";
 import { ConfiguratorUI } from "./components/ConfiguratorUI";
 import { SkinToneSelector } from "./components/SkinToneSelector";
-import { DiamondSpecs } from "./components/Configurator/DiamondSpecs";
+import { RingLoader } from "./components/ui/RingLoader";
 import { MetalType, GemType, SkinTone, RingModelType } from "./types/index";
 import { DiamondShape } from "./constants/optionConfig";
 
@@ -14,6 +14,7 @@ const App: React.FC = () => {
   const [autoRotate, setAutoRotate] = useState<boolean>(false);
   const [skinTone, setSkinTone] = useState<SkinTone>(SkinTone.Light);
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const [previousAutoRotate, setPreviousAutoRotate] = useState<boolean>(false);
   const [renderMode, setRenderMode] = useState<"performance" | "quality">(
@@ -22,6 +23,7 @@ const App: React.FC = () => {
 
   return (
     <div className="relative w-full h-screen lux-bg overflow-hidden">
+      {isLoading && <RingLoader />}
       <div className="absolute inset-0 z-0">
         <Scene
           metal={metal}
@@ -30,13 +32,12 @@ const App: React.FC = () => {
           ringModel={ringModel}
           autoRotate={autoRotate}
           onToggleAutoRotate={() => setAutoRotate((v) => !v)}
-          // removed tryHandOn prop
           skinTone={skinTone}
           renderMode={renderMode}
+          onLoadComplete={() => setIsLoading(false)}
         />
       </div>
 
-      <DiamondSpecs isConfiguratorOpen={isDrawerOpen} />
       {/* Customize buttons placed outside the drawer so they don't block scene interaction */}
       {!isDrawerOpen && (
           <> 

@@ -207,7 +207,7 @@ export const ConfiguratorUI: React.FC<ConfiguratorUIProps> = React.memo(
 
     const ringModelOptions = useMemo(() => createRingModelOptions(), []);
 
-    const [activeTab, setActiveTab] = useState<'gem' | 'shape' | 'ring' | 'render' | 'metal'>('gem');
+    const [activeTab, setActiveTab] = useState<'gem' | 'shape' | 'ring' | 'render'>('gem');
 
     const handleMetalSelect = useCallback((value: MetalType | boolean) => { if (typeof value !== 'boolean') setMetal(value); }, [setMetal]);
     const handleGemSelect = useCallback((value: GemType | boolean) => { if (typeof value !== 'boolean') setGem(value); }, [setGem]);
@@ -233,7 +233,7 @@ export const ConfiguratorUI: React.FC<ConfiguratorUIProps> = React.memo(
           </button>
           {/* Gemstone + Render Mode on top */}
           <div className={`mt-3 mx-auto w-full ${isMobile ? 'max-w-full px-4' : 'max-w-[520px]'}`}>
-            {/* Top area: show Diamond Shape (when selected) or horizontal Gemstone row or Metal row */}
+            {/* Top area: show Diamond Shape (when selected) or horizontal Gemstone row */}
             {activeTab === 'shape' ? (
               <div>
                 <div className="flex items-center justify-start gap-4 overflow-x-auto py-2 px-1">
@@ -246,22 +246,6 @@ export const ConfiguratorUI: React.FC<ConfiguratorUIProps> = React.memo(
                         onClick={() => handleDiamondShapeSelect(opt.value as any)}
                         previewImage={opt.previewImage}
                         imageOnly={true}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : activeTab === 'metal' ? (
-              <div>
-                <div className="flex items-center justify-center gap-4 overflow-x-auto py-2">
-                  {metalOptions.map((opt) => (
-                    <div key={opt.value} className="flex-shrink-0">
-                      <OptionItem
-                        value={opt.value as any}
-                        label={opt.label}
-                        isActive={metal === opt.value}
-                        onClick={() => handleMetalSelect(opt.value as any)}
-                        previewColor={opt.previewColor}
                       />
                     </div>
                   ))}
@@ -313,7 +297,6 @@ export const ConfiguratorUI: React.FC<ConfiguratorUIProps> = React.memo(
             <div className={`bg-white/80 backdrop-blur-md ${isMobile ? 'rounded-t-xl w-full px-4 py-3' : 'rounded-full px-3 py-1'} flex gap-2 shadow-sm justify-center`}>
                 {[
                   { key: 'ring', label: 'Gem stone' },
-                  { key: 'metal', label: 'Metal' },
                   { key: 'diamond', label: 'Diamond shape' },
                   { key: 'render', label: 'Render' },
                 ].map((t) => (
@@ -322,10 +305,9 @@ export const ConfiguratorUI: React.FC<ConfiguratorUIProps> = React.memo(
                     onClick={() => {
                       if (t.key === 'diamond') setActiveTab('shape');
                       else if (t.key === 'ring') setActiveTab('ring');
-                      else if (t.key === 'metal') setActiveTab('metal');
                       else if (t.key === 'render') setActiveTab('render');
                     }}
-                    className={`px-6 py-2 min-w-[145px] text-center whitespace-normal leading-tight rounded-full text-sm font-medium ${((t.key === 'diamond' && activeTab === 'shape') || (t.key === 'ring' && activeTab === 'ring') || (t.key === 'metal' && activeTab === 'metal') || (t.key === 'render' && activeTab === 'render')) ? 'bg-white text-black' : 'text-gray-600'}`}
+                    className={`px-6 py-2 min-w-[145px] text-center whitespace-normal leading-tight rounded-full text-sm font-medium ${((t.key === 'diamond' && activeTab === 'shape') || (t.key === 'ring' && activeTab === 'ring') || (t.key === 'render' && activeTab === 'render')) ? 'bg-white text-black' : 'text-gray-600'}`}
                   >
                     {t.label}
                   </button>

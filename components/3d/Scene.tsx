@@ -17,6 +17,7 @@ interface SceneProps {
   skinTone: SkinTone;
   renderMode: "performance" | "quality";
   onToggleAutoRotate?: () => void;
+  onLoadComplete?: () => void;
 }
 
 const ENV_Metal = "/assets/metal/env.hdr";
@@ -31,6 +32,7 @@ export const Scene: React.FC<SceneProps> = ({
   skinTone,
   renderMode,
   onToggleAutoRotate,
+  onLoadComplete,
 }) => {
   const [isModelReady, setIsModelReady] = useState(false);
   const [dpr, setDpr] = useState<number>(1);
@@ -71,6 +73,12 @@ export const Scene: React.FC<SceneProps> = ({
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
+
+  useEffect(() => {
+    if (isModelReady && onLoadComplete) {
+      onLoadComplete();
+    }
+  }, [isModelReady, onLoadComplete]);
 
   const ringPosition = new THREE.Vector3(0.1, -0.29, -0.3);
   // reduce default visual size of the ring on-screen
@@ -137,7 +145,6 @@ export const Scene: React.FC<SceneProps> = ({
               return {
                 ...base,
                 transform: 'translateX(50px) translateY(-50px)',
-                marginLeft: '-100px',
                 marginTop: '40px',
               };
             }
